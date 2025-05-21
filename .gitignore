@@ -1,0 +1,8 @@
+.vscode
+build
+install
+log
+Log
+
+__pycache__
+*.backup.py
