@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'autonomous = av_technology.autonomous:main',
             'qrcode_detector = av_technology.qrcode_detector:main',
+            'obstacle_detection = av_technology.obstacle_detection:main',
             'traffic_light_detector = av_technology.traffic_light_detector:main'
         ],
     },

@@ -9,7 +9,6 @@ from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Image
 from std_msgs.msg import Int32, Float32
-from 
 from enum import Enum
 
 SCREEN_WIDTH = 640
@@ -60,12 +59,6 @@ class Autonomous(Node):
             'scan',
             self.laser_callback,
             rclpy.qos.qos_profile_sensor_data)
-        self.subscription = self.create_subscription(
-            Symbol,
-            '/zbar_ros_interfaces/msg/Symbol',
-            self.symbol_callback,
-            rclpy.qos.qos_profile_sensor_data
-        )
         self.subscription # to prevent from warning
 
         # Publish result (offset between reference distance and real distance)
