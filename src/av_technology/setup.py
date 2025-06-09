@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'autonomous = av_technology.autonomous:main',
+            'finals = av_technology.finals:main',
+            'midterms = av_technology.midterms:main',
             'qrcode_detector = av_technology.qrcode_detector:main',
             'obstacle_detection = av_technology.obstacle_detection:main',
             'traffic_light_detector = av_technology.traffic_light_detector:main'
