@@ -16,39 +16,53 @@ class TrafficLightDetector(Node):
 
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        debug_img = frame.copy()
+        # Apply ROI: only take the top 100 pixels
+        roi = frame[:30, :]
+        debug_img = roi.copy()
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # Red light range (two intervals needed in HSV)
+        lower_red1 = np.array([0, 100, 100])
+        upper_red1 = np.array([10, 255, 255])
+        lower_red2 = np.array([160, 100, 100])
+        upper_red2 = np.array([179, 255, 255])
+        red_mask = cv2.inRange(hsv, lower_red1, upper_red1) + cv2.inRange(hsv, lower_red2, upper_red2)
 
-        # Define HSV ranges
-        color_ranges = {
-            "red":    [(0, 100, 100), (10, 255, 255)],
-            "yellow": [(20, 100, 100), (30, 255, 255)],
-            "green":  [(50, 100, 100), (70, 255, 255)],
-        }
+        # Yellow light range
+        lower_yellow = np.array([20, 100, 100])
+        upper_yellow = np.array([35, 255, 255])
+        yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
-        masks = {}
-        for color, (lower, upper) in color_ranges.items():
-            masks[color] = cv2.inRange(hsv, np.array(lower), np.array(upper))
+        # Green arrow range
+        lower_green = np.array([40, 50, 50])
+        upper_green = np.array([90, 255, 255])
+        green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
-        combined_mask = cv2.bitwise_or(masks["red"], cv2.bitwise_or(masks["yellow"], masks["green"]))
-        contours, _ = cv2.findContours(combined_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # Draw rectangles around detected regions
+        def draw_bounding_rects(mask, color):
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for cnt in contours:
+                x, y, w, h = cv2.boundingRect(cnt)
+                if cv2.contourArea(cnt) > 50:  # filter out small noise
+                    cv2.rectangle(debug_img, (x, y), (x + w, y + h), color, 2)
 
-        for cnt in contours:
-            x, y, w, h = cv2.boundingRect(cnt)
-            aspect_ratio = w / float(h)
+        draw_bounding_rects(red_mask, (0, 0, 255))      # Red rectangles
+        draw_bounding_rects(yellow_mask, (0, 255, 255)) # Yellow rectangles
+        draw_bounding_rects(green_mask, (0, 255, 0))    # Green rectangles
 
-            if aspect_ratio > 2.5 and w > 30 and h > 10:
-                cv2.rectangle(debug_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                roi = frame[y:y+h, x:x+w]
-                state = self.detect_light_state(roi)
+        # Threshold: if enough pixels are detected, treat it as active
+        self.get_logger().info(f"Red pixels: {cv2.countNonZero(red_mask)}, Yellow pixels: {cv2.countNonZero(yellow_mask)}, Green pixels: {cv2.countNonZero(green_mask)}")
+        if cv2.countNonZero(red_mask) > 300 and cv2.countNonZero(red_mask) > cv2.countNonZero(green_mask):
+            state = "RED"
+        elif cv2.countNonZero(yellow_mask) > 300:
+            state = "YELLOW"
+        elif cv2.countNonZero(green_mask) > 300 and cv2.countNonZero(green_mask) > cv2.countNonZero(red_mask):
+            state = "GREEN"
+        else:
+            state = "NONE"
 
-                if state:
-                    cv2.putText(debug_img, state, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                                (0, 255, 0), 2)
-                    self.publisher.publish(String(data=state))
-                    self.get_logger().info(f"Detected traffic light: {state}")
-                    break
+        # Publish the detected state
+        self.publisher.publish(String(data=state))
 
         # Publish the debug image
         debug_msg = self.bridge.cv2_to_imgmsg(debug_img, encoding='bgr8')
