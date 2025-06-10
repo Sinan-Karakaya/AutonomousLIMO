@@ -52,11 +52,11 @@ class TrafficLightDetector(Node):
 
         # Threshold: if enough pixels are detected, treat it as active
         self.get_logger().info(f"Red pixels: {cv2.countNonZero(red_mask)}, Yellow pixels: {cv2.countNonZero(yellow_mask)}, Green pixels: {cv2.countNonZero(green_mask)}")
-        if cv2.countNonZero(red_mask) > 300 and cv2.countNonZero(red_mask) > cv2.countNonZero(green_mask):
+        if cv2.countNonZero(red_mask) > 100 and cv2.countNonZero(red_mask) > cv2.countNonZero(green_mask):
             state = "RED"
-        elif cv2.countNonZero(yellow_mask) > 300:
+        elif cv2.countNonZero(yellow_mask) > 100:
             state = "YELLOW"
-        elif cv2.countNonZero(green_mask) > 300 and cv2.countNonZero(green_mask) > cv2.countNonZero(red_mask):
+        elif cv2.countNonZero(green_mask) > 100 and cv2.countNonZero(green_mask) > cv2.countNonZero(red_mask):
             state = "GREEN"
         else:
             state = "NONE"
