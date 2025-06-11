@@ -26,6 +26,7 @@ class QRCodeDetector(Node):
             if qr_data is not None:
                 qr_code_msg = String()
                 qr_code_msg.data = qr_data
+                self.get_logger().info(f'Detected QR code: {qr_data}')
                 self.qrcode_publisher.publish(qr_code_msg)
             else:
                 continue
