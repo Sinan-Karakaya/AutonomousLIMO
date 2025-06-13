@@ -11,13 +11,12 @@ class TrafficLightDetector(Node):
         super().__init__('traffic_light_detector')
         self.bridge = CvBridge()
         self.subscription = self.create_subscription(Image, '/camera/color/image_raw', self.image_callback, 10)
-        self.publisher = self.create_publisher(String, '/traffic_light_state', 10)
+        self.publisher = self.create_publisher(String, '/traffic_light_state', rclpy.qos.qos_profile_sensor_data)
         self.debug_pub = self.create_publisher(Image, '/debug_traffic_light', 10)
 
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        # Apply ROI: only take the top 100 pixels
-        roi = frame[:30, :]
+        roi = frame[:50, :]
         debug_img = roi.copy()
         hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
@@ -68,39 +67,6 @@ class TrafficLightDetector(Node):
         # Publish the debug image
         debug_msg = self.bridge.cv2_to_imgmsg(debug_img, encoding='bgr8')
         self.debug_pub.publish(debug_msg)
-
-    def detect_light_state(self, roi):
-        """Detect state based on red circle (left) and green arrow (right) in a horizontal traffic light."""
-        hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        h, w, _ = roi.shape
-
-        # Split into thirds: left (red), center (ignored), right (green arrow)
-        left = hsv_roi[:, :w // 3]
-        right = hsv_roi[:, 2 * w // 3:]
-
-        # Red detection in the left region
-        red_mask = cv2.inRange(left, np.array((0, 100, 100)), np.array((10, 255, 255)))
-        red_count = cv2.countNonZero(red_mask)
-
-        # Green detection in the right region
-        green_mask = cv2.inRange(right, np.array((50, 100, 100)), np.array((70, 255, 255)))
-        green_count = cv2.countNonZero(green_mask)
-
-        # Try detecting arrow shape in the green region (optional shape check)
-        green_arrow = False
-        contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for cnt in contours:
-            approx = cv2.approxPolyDP(cnt, 0.05 * cv2.arcLength(cnt, True), True)
-            if 5 <= len(approx) <= 8:  # approximate arrow shape
-                green_arrow = True
-                break
-
-        if red_count > 500:
-            return "red"
-        elif green_count > 500 and green_arrow:
-            return "green_left_arrow"
-        else:
-            return None
 
 def main(args=None):
     rclpy.init(args=args)

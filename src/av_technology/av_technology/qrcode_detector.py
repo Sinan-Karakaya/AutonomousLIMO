@@ -3,7 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from pyzbar.pyzbar import decode
-from std_msgs.msg import String
+from std_msgs.msg import Int32
 import cv2
 
 class QRCodeDetector(Node):
@@ -15,7 +15,7 @@ class QRCodeDetector(Node):
             self.listener_callback,
             10)
         self.bridge = CvBridge()
-        self.qrcode_publisher = self.create_publisher(String, '/qr_code_detected', 10)
+        self.qrcode_publisher = self.create_publisher(Int32, '/qr_code_detected', rclpy.qos.qos_profile_sensor_data)
 
     def listener_callback(self, msg):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -24,8 +24,12 @@ class QRCodeDetector(Node):
         for barcode in barcodes:
             qr_data = barcode.data.decode('utf-8')
             if qr_data is not None:
-                qr_code_msg = String()
-                qr_code_msg.data = qr_data
+                qr_code_msg = Int32()
+                try:
+                    qr_code_msg.data = int(qr_data)
+                except ValueError:
+                    self.get_logger().error(f"Invalid QR code data: {qr_data}")
+                    continue
                 self.get_logger().info(f'Detected QR code: {qr_data}')
                 self.qrcode_publisher.publish(qr_code_msg)
             else:
